@@ -25,6 +25,9 @@ func NormalizeAggregates(raw []string) ([]string, error) {
 	out := make([]string, 0, len(raw))
 	seen := make(map[string]struct{}, len(raw))
 	for _, item := range raw {
+		if strings.TrimSpace(item) == "" {
+			continue
+		}
 		name, err := normalizeAggregate(item)
 		if err != nil {
 			return nil, err
@@ -36,7 +39,7 @@ func NormalizeAggregates(raw []string) ([]string, error) {
 		out = append(out, name)
 	}
 	if len(out) == 0 {
-		return nil, fmt.Errorf("aggregates is required")
+		return []string{AggAvg}, nil
 	}
 	return out, nil
 }

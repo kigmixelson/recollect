@@ -29,16 +29,18 @@
 
 | Параметр | Обязательный | Пример | Описание |
 | --- | --- | --- | --- |
-| `host` | да | `saymon.example.com` | Имя SAYMON-хоста. Схема необязательна, по умолчанию `https` |
+| `host` | да | `http://pult.dc-en.ru` | Хост SAYMON. Можно с схемой `http://` или `https://`. Без схемы берётся `https` |
+| `scheme` | нет | `http` | `http` или `https`, если в `host` нет схемы |
 | `token` | да | `682a3631-...` | Ключ доступа SAYMON |
 | `object_id` | да | `6a61ae4562e391eba8d3edbb` | ID родительского объекта |
 | `metrics` | да | `message.I` | Метрики: повторять параметр или перечислить через запятую |
-| `aggregates` | да | `avg` | Агрегаты: можно несколько |
+| `aggregates` | нет | `avg` | По умолчанию `avg`. Можно несколько: min, max, sum, dev |
 | `depth` | да | `12h` | Глубина окна от текущего момента |
 
 Синонимы query-параметров:
 
 - хост: `host`, `hostname`, `saymon_host`, заголовок `X-Saymon-Host`
+- схема: `scheme`, `proto`, `protocol`
 - токен: `token`, `auth-token`, `api-token`, заголовок `X-Saymon-Token` или `Authorization: Bearer ...`
 - объект: `object_id`, `objectId`, `object`, `id`
 - метрики: `metrics`, `metric`, `metrics[]`
@@ -64,7 +66,7 @@
 
 ```json
 {
-  "host": "saymon.example.com",
+  "host": "http://pult.dc-en.ru",
   "object_id": "6a61ae4562e391eba8d3edbb",
   "metrics": ["message.I", "message.Temp"],
   "aggregates": ["avg", "min", "max", "sum", "dev"],
@@ -106,18 +108,17 @@ curl -s http://127.0.0.1:8080/healthz
 
 ```bash
 curl -G 'http://127.0.0.1:8080/api/collect' \
-  --data-urlencode 'host=saymon.example.com' \
-  --data-urlencode 'token=682a3631-cfb2-49dd-b09f-858280a240dd' \
+  --data-urlencode 'host=http://pult.dc-en.ru' \
+  --data-urlencode 'token=YOUR_TOKEN' \
   --data-urlencode 'object_id=6a61ae4562e391eba8d3edbb' \
   --data-urlencode 'metrics=message.I' \
-  --data-urlencode 'metrics=message.Temp' \
   --data-urlencode 'aggregates=avg' \
-  --data-urlencode 'aggregates=min' \
-  --data-urlencode 'aggregates=max' \
-  --data-urlencode 'aggregates=sum' \
-  --data-urlencode 'aggregates=dev' \
   --data-urlencode 'depth=12h'
 ```
+
+Без схемы в `host` сервис ходит по **https**. Если SAYMON на http, пишите `host=http://pult.dc-en.ru` или добавьте `--data-urlencode 'scheme=http'`.
+
+Не оставляйте пустой `--data-urlencode` без значения — curl ломает query (`Could not parse the URL`).
 
 Токен заголовком:
 

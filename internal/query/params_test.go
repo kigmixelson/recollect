@@ -51,7 +51,7 @@ func TestParseCollectJSONBody(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if p.Host != "saymon.local" || p.Token != "abc" || p.ObjectID != "obj1" {
+	if p.Host != "https://saymon.local" || p.Token != "abc" || p.ObjectID != "obj1" {
 		t.Fatalf("unexpected identity: %+v", p)
 	}
 	if len(p.Metrics) != 2 || p.Aggregates[0] != AggAvg || p.Depth != 12*time.Hour {
@@ -66,7 +66,7 @@ func TestParseCollect(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if p.Host != "saymon.local" || p.Token != "abc" || p.ObjectID != "obj1" {
+	if p.Host != "https://saymon.local" || p.Token != "abc" || p.ObjectID != "obj1" {
 		t.Fatalf("unexpected identity: %+v", p)
 	}
 	if len(p.Metrics) != 2 || p.Metrics[0] != "message.I" {
@@ -80,5 +80,42 @@ func TestParseCollect(t *testing.T) {
 	}
 	if !p.To.After(p.From) {
 		t.Fatalf("from/to window is invalid: %v %v", p.From, p.To)
+	}
+}
+
+func TestNormalizeHost(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		host, scheme, want string
+	}{
+		{"pult.dc-en.ru", "", "https://pult.dc-en.ru"},
+		{"pult.dc-en.ru", "http", "http://pult.dc-en.ru"},
+		{"http://pult.dc-en.ru", "", "http://pult.dc-en.ru"},
+		{"https://pult.dc-en.ru", "http", "http://pult.dc-en.ru"},
+		{"pult.dc-en.ru:8080", "http", "http://pult.dc-en.ru:8080"},
+	}
+	for _, tc := range cases {
+		got, err := NormalizeHost(tc.host, tc.scheme)
+		if err != nil {
+			t.Fatalf("NormalizeHost(%q, %q): %v", tc.host, tc.scheme, err)
+		}
+		if got != tc.want {
+			t.Fatalf("NormalizeHost(%q, %q)=%q, want %q", tc.host, tc.scheme, got, tc.want)
+		}
+	}
+}
+
+func TestParseCollectHTTPScheme(t *testing.T) {
+	t.Parallel()
+	req := httptest.NewRequest(http.MethodGet, "/api/collect?host=http://pult.dc-en.ru&token=abc&object_id=obj1&metrics=message.I&depth=3m", nil)
+	p, err := ParseCollect(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p.Host != "http://pult.dc-en.ru" {
+		t.Fatalf("host: %s", p.Host)
+	}
+	if len(p.Aggregates) != 1 || p.Aggregates[0] != AggAvg {
+		t.Fatalf("default aggregate: %v", p.Aggregates)
 	}
 }

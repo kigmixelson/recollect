@@ -21,6 +21,7 @@ type CollectParams struct {
 	DepthRaw   string
 	From       time.Time
 	To         time.Time
+	Scheme     string
 }
 
 type collectBody struct {
@@ -35,6 +36,7 @@ type collectBody struct {
 	Metrics    flexStrings `json:"metrics"`
 	Aggregates flexStrings `json:"aggregates"`
 	Depth      string      `json:"depth"`
+	Scheme     string      `json:"scheme"`
 }
 
 type flexStrings []string
@@ -71,6 +73,7 @@ func ParseCollect(r *http.Request) (CollectParams, error) {
 		ObjectID: first(q, "", "object_id", "objectId", "object", "id"),
 		Metrics:  UniqueNonEmpty(values(q, "metrics", "metric", "metrics[]")),
 		DepthRaw: first(q, "", "depth", "window", "period"),
+		Scheme:   first(q, "", "scheme", "proto", "protocol"),
 	}
 
 	bodyAggs := []string(nil)
@@ -92,6 +95,9 @@ func ParseCollect(r *http.Request) (CollectParams, error) {
 		if p.DepthRaw == "" {
 			p.DepthRaw = body.Depth
 		}
+		if p.Scheme == "" {
+			p.Scheme = body.Scheme
+		}
 		bodyAggs = []string(body.Aggregates)
 	}
 
@@ -108,6 +114,11 @@ func ParseCollect(r *http.Request) (CollectParams, error) {
 	if strings.TrimSpace(p.Host) == "" {
 		return CollectParams{}, fmt.Errorf("host is required")
 	}
+	normalized, err := NormalizeHost(p.Host, p.Scheme)
+	if err != nil {
+		return CollectParams{}, err
+	}
+	p.Host = normalized
 	if strings.TrimSpace(p.Token) == "" {
 		return CollectParams{}, fmt.Errorf("token is required")
 	}
