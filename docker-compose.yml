@@ -1,0 +1,17 @@
+services:
+  recollect:
+    image: ${RECOLLECT_IMAGE:-recollect:local}
+    ports:
+      - "8080:8080"
+    environment:
+      LISTEN_ADDR: ${LISTEN_ADDR:-:8080}
+      HTTP_TIMEOUT: ${HTTP_TIMEOUT:-30s}
+      SAYMON_CONCURRENCY: ${SAYMON_CONCURRENCY:-8}
+      SAYMON_TLS_INSECURE: ${SAYMON_TLS_INSECURE:-false}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/healthz"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
