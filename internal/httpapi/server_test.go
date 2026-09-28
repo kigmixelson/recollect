@@ -45,12 +45,19 @@ func TestCollectHTTP(t *testing.T) {
 		t.Fatalf("status %d body %s", rec.Code, rec.Body.String())
 	}
 
-	var payload collect.Result
+	var payload map[string]map[string]*float64
 	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
 		t.Fatal(err)
 	}
-	if payload.Values["message.I"]["max"] == nil || *payload.Values["message.I"]["max"] != 9 {
-		t.Fatalf("payload: %+v", payload)
+	if payload["message.I"]["max"] == nil || *payload["message.I"]["max"] != 9 {
+		t.Fatalf("payload: %s", rec.Body.String())
+	}
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(rec.Body.Bytes(), &raw); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := raw["host"]; ok {
+		t.Fatalf("compact body should not include metadata: %s", rec.Body.String())
 	}
 }
 
@@ -76,12 +83,12 @@ func TestCollectHTTPPostJSON(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status %d body %s", rec.Code, rec.Body.String())
 	}
-	var payload collect.Result
+	var payload map[string]map[string]*float64
 	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
 		t.Fatal(err)
 	}
-	if payload.Values["message.I"]["avg"] == nil || *payload.Values["message.I"]["avg"] != 3 {
-		t.Fatalf("payload: %+v", payload)
+	if payload["message.I"]["avg"] == nil || *payload["message.I"]["avg"] != 3 {
+		t.Fatalf("payload: %s", rec.Body.String())
 	}
 }
 
@@ -112,6 +119,37 @@ func TestCollectHTTPPrefixed(t *testing.T) {
 	handler.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("collect prefix status %d body %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestCollectHTTPDebug(t *testing.T) {
+	t.Parallel()
+	cli := &fakeClient{
+		children: []saymon.Object{{
+			ID:           "c1",
+			Name:         "child",
+			MetricsCache: []string{"message.I"},
+		}},
+		history: map[string][]saymon.MetricHistory{
+			"c1": {{Metric: "message.I", Dps: saymon.DataPoints{{Timestamp: 1, Value: 9}}}},
+		},
+	}
+	handler := New(collect.New(cli, 1), nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/collect?host=saymon.local&token=abc&object_id=parent&metrics=message.I&aggregates=avg&depth=3m&debug=1", nil)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status %d body %s", rec.Code, rec.Body.String())
+	}
+	var payload collect.Result
+	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
+		t.Fatal(err)
+	}
+	if payload.ObjectID != "parent" || len(payload.Samples) != 1 {
+		t.Fatalf("debug payload: %+v", payload)
+	}
+	if payload.Values["message.I"]["avg"] == nil || *payload.Values["message.I"]["avg"] != 9 {
+		t.Fatalf("debug values: %+v", payload.Values)
 	}
 }
 

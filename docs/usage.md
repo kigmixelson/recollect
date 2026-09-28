@@ -37,6 +37,7 @@
 | `metrics` | да | `message.I` | Метрики: повторять параметр или перечислить через запятую |
 | `aggregates` | нет | `avg` | По умолчанию `avg`. Можно несколько: min, max, sum, dev |
 | `depth` | да | `12h` | Глубина окна от текущего момента |
+| `debug` | нет | `1` | Полный ответ со `samples` и метаданными. Без него тело — только значения |
 
 Синонимы query-параметров:
 
@@ -47,6 +48,7 @@
 - метрики: `metrics`, `metric`, `metrics[]`
 - агрегаты: `aggregates`, `aggregate`, `aggs`, `aggregates[]`
 - глубина: `depth`, `window`, `period`
+- отладка: `debug`
 
 Токен в query попадает в access-логи. Для продакшена лучше заголовок `X-Saymon-Token` или `Authorization: Bearer`, см. [nginx](nginx.md).
 
@@ -121,6 +123,19 @@ curl -G 'http://127.0.0.1:8080/api/collect' \
 
 Не оставляйте пустой `--data-urlencode` без значения — curl ломает query (`Could not parse the URL`).
 
+Полный ответ со `samples`:
+
+```bash
+curl -G 'http://127.0.0.1:8080/api/collect' \
+  --data-urlencode 'host=http://pult.dc-en.ru' \
+  --data-urlencode 'token=YOUR_TOKEN' \
+  --data-urlencode 'object_id=6a61ae4562e391eba8d3edbb' \
+  --data-urlencode 'metrics=message.I' \
+  --data-urlencode 'aggregates=avg' \
+  --data-urlencode 'depth=12h' \
+  --data-urlencode 'debug=1'
+```
+
 Токен заголовком:
 
 ```bash
@@ -147,37 +162,37 @@ curl -G 'https://recollect.example.com/api/collect' \
 
 ## Ответ
 
-`200` — расчёт выполнен. `values` — итог по всем детям, `samples` — свежие точки, из которых он собран.
+По умолчанию тело — только значения, чтобы SAYMON HTTP-проверка могла читать JSON напрямую:
 
-Пример для трёх ИКЗ и `message.I` = 52.625, 42.25, 37:
+```json
+{"message.I":{"avg":25.433333079020002}}
+```
+
+Нет точек в окне:
+
+```json
+{"message.I":{}}
+```
+
+С `debug=1` (query) или `"debug": true` (JSON) возвращается полный расчёт: окно, `samples`, `skipped`.
 
 ```json
 {
   "host": "https://pult.dc-en.kg",
   "object_id": "6a61ae4562e391eba8d3edbb",
   "depth": "12h",
-  "from": 1790573586417,
-  "to": 1790616786417,
+  "from": 1790575797022,
+  "to": 1790618997022,
   "metrics": ["message.I"],
   "aggregates": ["avg"],
   "values": {
-    "message.I": {"avg": 43.958333333333336}
+    "message.I": {"avg": 25.433333079020002}
   },
   "samples": [
-    {"id": "6a61aea562e391eba8d3edc3", "name": "ИКЗ 2603017001", "metric": "message.I", "value": 52.625, "timestamp": 1790616700000},
-    {"id": "6a61aed362e391eba8d3edd7", "name": "ИКЗ 2603017002", "metric": "message.I", "value": 42.25, "timestamp": 1790616700000},
-    {"id": "6a61af1362e391eba8d3edea", "name": "ИКЗ 2603017003", "metric": "message.I", "value": 37, "timestamp": 1790616700000}
+    {"id": "6a61aea562e391eba8d3edc3", "name": "ИКЗ 2603017001", "metric": "message.I", "value": 26.29999923706, "timestamp": 1790618814979},
+    {"id": "6a61aed362e391eba8d3edd7", "name": "ИКЗ 2603017002", "metric": "message.I", "value": 26, "timestamp": 1790618815225},
+    {"id": "6a61af1362e391eba8d3edea", "name": "ИКЗ 2603017003", "metric": "message.I", "value": 24, "timestamp": 1790618815467}
   ]
-}
-```
-
-Нет точек в окне:
-
-```json
-{
-  "values": {
-    "message.I": {}
-  }
 }
 ```
 

@@ -22,6 +22,7 @@ type CollectParams struct {
 	From       time.Time
 	To         time.Time
 	Scheme     string
+	Debug      bool
 }
 
 type collectBody struct {
@@ -37,6 +38,7 @@ type collectBody struct {
 	Aggregates flexStrings `json:"aggregates"`
 	Depth      string      `json:"depth"`
 	Scheme     string      `json:"scheme"`
+	Debug      *flexBool   `json:"debug"`
 }
 
 type flexStrings []string
@@ -98,7 +100,13 @@ func ParseCollect(r *http.Request) (CollectParams, error) {
 		if p.Scheme == "" {
 			p.Scheme = body.Scheme
 		}
+		if !q.Has("debug") && body.Debug != nil {
+			p.Debug = bool(*body.Debug)
+		}
 		bodyAggs = []string(body.Aggregates)
+	}
+	if q.Has("debug") {
+		p.Debug = truthyFlag(q.Get("debug"))
 	}
 
 	aggSrc := values(q, "aggregates", "aggregate", "aggs", "aggregates[]")
@@ -199,4 +207,48 @@ func firstNonEmpty(vals ...string) string {
 		}
 	}
 	return ""
+}
+
+type flexBool bool
+
+func (f *flexBool) UnmarshalJSON(b []byte) error {
+	b = bytes.TrimSpace(b)
+	if len(b) == 0 || bytes.Equal(b, []byte("null")) {
+		*f = false
+		return nil
+	}
+	switch b[0] {
+	case 't', 'f':
+		var v bool
+		if err := json.Unmarshal(b, &v); err != nil {
+			return err
+		}
+		*f = flexBool(v)
+		return nil
+	case '"':
+		var s string
+		if err := json.Unmarshal(b, &s); err != nil {
+			return err
+		}
+		*f = flexBool(truthyFlag(s))
+		return nil
+	default:
+		var n json.Number
+		if err := json.Unmarshal(b, &n); err != nil {
+			return fmt.Errorf("debug must be a boolean")
+		}
+		*f = flexBool(n != "0")
+		return nil
+	}
+}
+
+func truthyFlag(s string) bool {
+	switch strings.ToLower(strings.TrimSpace(s)) {
+	case "", "1", "true", "yes", "y", "on", "debug":
+		return true
+	case "0", "false", "no", "n", "off":
+		return false
+	default:
+		return true
+	}
 }

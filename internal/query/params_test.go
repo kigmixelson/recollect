@@ -81,6 +81,32 @@ func TestParseCollect(t *testing.T) {
 	if !p.To.After(p.From) {
 		t.Fatalf("from/to window is invalid: %v %v", p.From, p.To)
 	}
+	if p.Debug {
+		t.Fatal("debug should be off by default")
+	}
+}
+
+func TestParseCollectDebug(t *testing.T) {
+	t.Parallel()
+	req := httptest.NewRequest(http.MethodGet, "/api/collect?host=saymon.local&token=abc&object_id=obj1&metrics=message.I&depth=3m&debug=1", nil)
+	p, err := ParseCollect(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !p.Debug {
+		t.Fatal("expected debug from query")
+	}
+
+	body := `{"host":"saymon.local","object_id":"obj1","metrics":["message.I"],"depth":"3m","debug":true}`
+	req = httptest.NewRequest(http.MethodPost, "/api/collect", strings.NewReader(body))
+	req.Header.Set("X-Saymon-Token", "abc")
+	p, err = ParseCollect(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !p.Debug {
+		t.Fatal("expected debug from JSON")
+	}
 }
 
 func TestNormalizeHost(t *testing.T) {

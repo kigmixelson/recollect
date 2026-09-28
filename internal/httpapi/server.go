@@ -77,9 +77,14 @@ func (s *Server) collect(w http.ResponseWriter, r *http.Request) {
 		"object_id", params.ObjectID,
 		"samples", len(result.Samples),
 		"skipped", len(result.Skipped),
+		"debug", params.Debug,
 		"took", time.Since(started).String(),
 	)
-	writeJSON(w, http.StatusOK, result)
+	if params.Debug {
+		writeJSON(w, http.StatusOK, result)
+		return
+	}
+	writeJSON(w, http.StatusOK, result.Values)
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
