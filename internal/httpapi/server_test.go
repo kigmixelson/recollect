@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -53,6 +54,30 @@ func TestCollectHTTP(t *testing.T) {
 	}
 	if *payload.Results[0].Values["message.I"]["max"] != 9 {
 		t.Fatalf("value: %+v", payload.Results[0].Values)
+	}
+}
+
+func TestCollectHTTPPostJSON(t *testing.T) {
+	t.Parallel()
+	cli := &fakeClient{
+		children: []saymon.Object{{
+			ID:           "c1",
+			Name:         "child",
+			MetricsCache: []string{"message.I"},
+		}},
+		history: map[string][]saymon.MetricHistory{
+			"c1|all-avg": {{Metric: "message.I", Dps: saymon.DataPoints{{Value: 3}}}},
+		},
+	}
+	handler := New(collect.New(cli, 1), nil)
+	body := `{"host":"saymon.local","object_id":"parent","metrics":["message.I"],"aggregates":["avg"],"depth":"3m"}`
+	req := httptest.NewRequest(http.MethodPost, "/api/collect", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Saymon-Token", "abc")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status %d body %s", rec.Code, rec.Body.String())
 	}
 }
 

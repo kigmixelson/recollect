@@ -7,7 +7,8 @@
 | Метод | Путь | Назначение |
 | --- | --- | --- |
 | `GET` | `/healthz` | Проверка, что процесс жив |
-| `GET` | `/api/collect` | Расчёт агрегатов по дочерним метрикам SAYMON |
+| `GET` | `/api/collect` | Расчёт, параметры в query |
+| `POST` | `/api/collect` | Расчёт, параметры в JSON-теле — удобно для HTTP-проверки SAYMON |
 
 ## Как считается ответ
 
@@ -20,7 +21,9 @@
 
 ## Параметры `/api/collect`
 
-Все параметры передаются в query string. Значения с пробелами и кириллицей кодируйте (`curl -G --data-urlencode`).
+`GET` — query string. `POST` — JSON в теле. Заголовки перекрывают токен и хост.
+
+Значения с пробелами в GET кодируйте (`curl -G --data-urlencode`).
 
 | Параметр | Обязательный | Пример | Описание |
 | --- | --- | --- | --- |
@@ -40,7 +43,36 @@
 - агрегаты: `aggregates`, `aggregate`, `aggs`, `aggregates[]`
 - глубина: `depth`, `window`, `period`
 
-Токен в query попадает в access-логи. Для продакшена лучше заголовок, см. [nginx](nginx.md).
+Токен в query попадает в access-логи. Для продакшена лучше заголовок `X-Saymon-Token` или `Authorization: Bearer`, см. [nginx](nginx.md).
+
+## HTTP-проверка SAYMON
+
+В сенсоре **HTTP request** лучше `POST` и JSON в **Request body**: URL короткий, массивы метрик читаются, токен не светится в строке адреса.
+
+| Поле в форме | Значение |
+| --- | --- |
+| Request type | `POST` |
+| URL | `http://<recollect-host>/api/collect` |
+| HTTP headers | `Content-Type` = `application/json` |
+| Request body | JSON ниже |
+| HTTP Auth | `Bearer`, токен в поле username |
+| Timeout | `120000` (мс), запросы к истории могут быть долгими |
+| Send response body | включено |
+| Response format | JSON, если есть в списке, иначе Autodetect |
+
+```json
+{
+  "host": "saymon.example.com",
+  "object_id": "6a61ae4562e391eba8d3edbb",
+  "metrics": ["message.I", "message.Temp"],
+  "aggregates": ["avg", "min", "max", "sum", "dev"],
+  "depth": "12h"
+}
+```
+
+Токен в JSON тоже можно (`"token": "..."`), но в этой форме удобнее Bearer.
+
+`GET` с длинным query тоже работает, его имеет смысл только для разовых проверок из curl.
 
 ## Агрегаты
 

@@ -3,6 +3,7 @@ package query
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 )
@@ -38,6 +39,23 @@ func TestNormalizeAggregates(t *testing.T) {
 		if got[i] != want[i] {
 			t.Fatalf("got %v, want %v", got, want)
 		}
+	}
+}
+
+func TestParseCollectJSONBody(t *testing.T) {
+	t.Parallel()
+	body := `{"host":"saymon.local","object_id":"obj1","metrics":["message.I","message.Temp"],"aggregates":"avg,min","depth":"12h"}`
+	req := httptest.NewRequest(http.MethodPost, "/api/collect", strings.NewReader(body))
+	req.Header.Set("X-Saymon-Token", "abc")
+	p, err := ParseCollect(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p.Host != "saymon.local" || p.Token != "abc" || p.ObjectID != "obj1" {
+		t.Fatalf("unexpected identity: %+v", p)
+	}
+	if len(p.Metrics) != 2 || p.Aggregates[0] != AggAvg || p.Depth != 12*time.Hour {
+		t.Fatalf("parsed: %+v", p)
 	}
 }
 

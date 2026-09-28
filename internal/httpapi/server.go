@@ -25,6 +25,7 @@ func New(service *collect.Service, log *slog.Logger) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", s.health)
 	mux.HandleFunc("GET /api/collect", s.collect)
+	mux.HandleFunc("POST /api/collect", s.collect)
 	return withRecover(log, mux)
 }
 

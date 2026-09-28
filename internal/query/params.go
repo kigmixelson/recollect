@@ -1,7 +1,10 @@
 package query
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -20,6 +23,44 @@ type CollectParams struct {
 	To         time.Time
 }
 
+type collectBody struct {
+	Host       string      `json:"host"`
+	Hostname   string      `json:"hostname"`
+	SaymonHost string      `json:"saymon_host"`
+	Token      string      `json:"token"`
+	ObjectID   string      `json:"object_id"`
+	ObjectId   string      `json:"objectId"`
+	Object     string      `json:"object"`
+	ID         string      `json:"id"`
+	Metrics    flexStrings `json:"metrics"`
+	Aggregates flexStrings `json:"aggregates"`
+	Depth      string      `json:"depth"`
+}
+
+type flexStrings []string
+
+func (f *flexStrings) UnmarshalJSON(b []byte) error {
+	b = bytes.TrimSpace(b)
+	if len(b) == 0 || string(b) == "null" {
+		*f = nil
+		return nil
+	}
+	if b[0] == '"' {
+		var one string
+		if err := json.Unmarshal(b, &one); err != nil {
+			return err
+		}
+		*f = UniqueNonEmpty([]string{one})
+		return nil
+	}
+	var many []string
+	if err := json.Unmarshal(b, &many); err != nil {
+		return fmt.Errorf("metrics/aggregates must be a string or array of strings")
+	}
+	*f = UniqueNonEmpty(many)
+	return nil
+}
+
 func ParseCollect(r *http.Request) (CollectParams, error) {
 	q := r.URL.Query()
 	now := time.Now()
@@ -32,7 +73,33 @@ func ParseCollect(r *http.Request) (CollectParams, error) {
 		DepthRaw: first(q, "", "depth", "window", "period"),
 	}
 
-	aggs, err := NormalizeAggregates(values(q, "aggregates", "aggregate", "aggs", "aggregates[]"))
+	bodyAggs := []string(nil)
+	if body, err := readCollectBody(r); err != nil {
+		return CollectParams{}, err
+	} else if body != nil {
+		if p.Host == "" {
+			p.Host = firstNonEmpty(body.Host, body.Hostname, body.SaymonHost)
+		}
+		if p.Token == "" {
+			p.Token = body.Token
+		}
+		if p.ObjectID == "" {
+			p.ObjectID = firstNonEmpty(body.ObjectID, body.ObjectId, body.Object, body.ID)
+		}
+		if len(p.Metrics) == 0 {
+			p.Metrics = UniqueNonEmpty([]string(body.Metrics))
+		}
+		if p.DepthRaw == "" {
+			p.DepthRaw = body.Depth
+		}
+		bodyAggs = []string(body.Aggregates)
+	}
+
+	aggSrc := values(q, "aggregates", "aggregate", "aggs", "aggregates[]")
+	if len(UniqueNonEmpty(aggSrc)) == 0 {
+		aggSrc = bodyAggs
+	}
+	aggs, err := NormalizeAggregates(aggSrc)
 	if err != nil {
 		return CollectParams{}, err
 	}
@@ -61,6 +128,28 @@ func ParseCollect(r *http.Request) (CollectParams, error) {
 	return p, nil
 }
 
+func readCollectBody(r *http.Request) (*collectBody, error) {
+	if r.Body == nil || r.Method == http.MethodGet || r.Method == http.MethodHead {
+		return nil, nil
+	}
+	raw, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
+	if err != nil {
+		return nil, fmt.Errorf("read body: %w", err)
+	}
+	raw = bytes.TrimSpace(raw)
+	if len(raw) == 0 {
+		return nil, nil
+	}
+	if raw[0] != '{' {
+		return nil, fmt.Errorf("body must be a JSON object")
+	}
+	var body collectBody
+	if err := json.Unmarshal(raw, &body); err != nil {
+		return nil, fmt.Errorf("invalid JSON body: %w", err)
+	}
+	return &body, nil
+}
+
 func headerToken(r *http.Request) string {
 	if v := r.Header.Get("X-Saymon-Token"); v != "" {
 		return v
@@ -87,6 +176,15 @@ func first(q url.Values, header string, keys ...string) string {
 	for _, key := range keys {
 		if v := strings.TrimSpace(q.Get(key)); v != "" {
 			return v
+		}
+	}
+	return ""
+}
+
+func firstNonEmpty(vals ...string) string {
+	for _, v := range vals {
+		if strings.TrimSpace(v) != "" {
+			return strings.TrimSpace(v)
 		}
 	}
 	return ""
