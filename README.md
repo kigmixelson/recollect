@@ -9,4 +9,4 @@
 - [Сборка](docs/build.md) — `./scripts/build-arm.sh` или `./scripts/build-amd.sh`
 - [Установка](docs/install.md) — `./scripts/deploy.sh архив.tar.gz` на целевой машине
 - [Использование](docs/usage.md) — API и примеры запросов
-- [Nginx](docs/nginx.md) — drop-in `nginx/recollect.conf` рядом с другими сайтами
+- [Nginx](docs/nginx.md) — `location /recollect/` на существующем хосте

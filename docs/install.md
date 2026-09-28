@@ -73,7 +73,7 @@ cd /opt/recollect
 docker compose up -d
 ```
 
-Конфиг nginx после установки: `/opt/recollect/recollect.conf`. Его можно скопировать в `/etc/nginx/conf.d/` или `sites-enabled` — см. [nginx.md](nginx.md).
+Конфиг nginx после установки: `/opt/recollect/recollect.location.conf` — вставка в существующий `server`. Отдельный vhost: `recollect.conf`. См. [nginx.md](nginx.md).
 
 
 ## Обновление
@@ -141,5 +141,6 @@ curl -s http://127.0.0.1:8080/healthz
 | `HTTP_TIMEOUT` | `30s` | Таймаут одного запроса к SAYMON |
 | `SAYMON_CONCURRENCY` | `8` | Параллельные запросы истории |
 | `SAYMON_TLS_INSECURE` | `false` | Не проверять TLS-сертификат SAYMON |
+| `HTTP_PREFIX` | `/recollect` | Дополнительный URL-префикс. Корень `/` всегда доступен. `-` — только корень |
 
 Дальше — [использование](usage.md) и [nginx](nginx.md).

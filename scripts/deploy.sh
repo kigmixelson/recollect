@@ -91,6 +91,9 @@ cp "${SRC}/docker-compose.yml" "${INSTALL_DIR}/docker-compose.yml"
 if [[ -f "${SRC}/recollect.conf" ]]; then
   cp "${SRC}/recollect.conf" "${INSTALL_DIR}/recollect.conf"
 fi
+if [[ -f "${SRC}/recollect.location.conf" ]]; then
+  cp "${SRC}/recollect.location.conf" "${INSTALL_DIR}/recollect.location.conf"
+fi
 if [[ -f "${SRC}/VERSION" ]]; then
   cp "${SRC}/VERSION" "${INSTALL_DIR}/VERSION"
 fi

@@ -8,6 +8,7 @@ services:
       HTTP_TIMEOUT: ${HTTP_TIMEOUT:-30s}
       SAYMON_CONCURRENCY: ${SAYMON_CONCURRENCY:-8}
       SAYMON_TLS_INSECURE: ${SAYMON_TLS_INSECURE:-false}
+      HTTP_PREFIX: ${HTTP_PREFIX:-/recollect}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "/usr/local/bin/recollect", "healthcheck"]

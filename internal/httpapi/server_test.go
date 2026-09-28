@@ -81,6 +81,36 @@ func TestCollectHTTPPostJSON(t *testing.T) {
 	}
 }
 
+func TestCollectHTTPPrefixed(t *testing.T) {
+	t.Parallel()
+	cli := &fakeClient{
+		children: []saymon.Object{{
+			ID:           "c1",
+			Name:         "child",
+			MetricsCache: []string{"message.I"},
+		}},
+		history: map[string][]saymon.MetricHistory{
+			"c1|all-avg": {{Metric: "message.I", Dps: saymon.DataPoints{{Value: 3}}}},
+		},
+	}
+	handler := New(collect.New(cli, 1), nil)
+	req := httptest.NewRequest(http.MethodGet, "/recollect/healthz", nil)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("healthz prefix status %d", rec.Code)
+	}
+
+	body := `{"host":"saymon.local","token":"abc","object_id":"parent","metrics":["message.I"],"aggregates":["avg"],"depth":"3m"}`
+	req = httptest.NewRequest(http.MethodPost, "/recollect/api/collect", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec = httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("collect prefix status %d body %s", rec.Code, rec.Body.String())
+	}
+}
+
 func TestCollectHTTPBadRequest(t *testing.T) {
 	t.Parallel()
 	handler := New(collect.New(&fakeClient{}, 1), nil)

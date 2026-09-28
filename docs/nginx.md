@@ -1,62 +1,61 @@
 # Nginx перед recollect
 
-Готовый drop-in: [`nginx/recollect.conf`](../nginx/recollect.conf).
+Обычный вариант — **location на существующем хосте**, не отдельный vhost.
 
-Файл кладётся рядом с другими сайтами. `default_server` не используется, соседние vhost не перехватываются.
+Сниппет: [`nginx/recollect.location.conf`](../nginx/recollect.location.conf).
+
+Публичный URL: `https://<уже-работающий-хост>/recollect/api/collect`.
 
 ```text
-клиент --> nginx :80/:443 --> 127.0.0.1:8080 recollect --> SAYMON
+клиент --> nginx /recollect/ --> 127.0.0.1:8080/recollect/... --> SAYMON
 ```
+
+Приложение отвечает и на `/api/collect`, и на `/recollect/api/collect`. Nginx **не обрезает** префикс: `proxy_pass` без слэша в конце передаёт полный путь.
 
 ## Подготовка
 
-1. Recollect отвечает на `http://127.0.0.1:8080/healthz`.
-2. Порт 8080 не торчит наружу:
+1. Recollect отвечает на `http://127.0.0.1:8080/healthz` и `http://127.0.0.1:8080/recollect/healthz`.
+2. Порт 8080 только на localhost:
 
 ```yaml
 ports:
   - "127.0.0.1:8080:8080"
 ```
 
-3. В `recollect.conf` замените `server_name recollect.example.com` на свой хост.
-
-## Включение
-
-Debian/Ubuntu:
+## Вставка в существующий server
 
 ```bash
-cp nginx/recollect.conf /etc/nginx/sites-available/recollect.conf
-ln -s /etc/nginx/sites-available/recollect.conf /etc/nginx/sites-enabled/recollect.conf
-nginx -t && systemctl reload nginx
+cp /opt/recollect/recollect.location.conf /etc/nginx/snippets/recollect.location.conf
 ```
 
-Или в общий `conf.d`:
+Внутри уже работающего `server { ... }`:
+
+```nginx
+include /etc/nginx/snippets/recollect.location.conf;
+```
+
+Либо скопируйте `location /recollect/` из файла прямо в этот `server`. Соседние `location` не трогайте.
 
 ```bash
-cp nginx/recollect.conf /etc/nginx/conf.d/recollect.conf
 nginx -t && systemctl reload nginx
 ```
-
-После `deploy.sh` копия лежит в `/opt/recollect/recollect.conf`.
 
 Проверка:
 
 ```bash
-curl -s -H 'Host: recollect.example.com' http://127.0.0.1/healthz
+curl -s https://<ваш-хост>/recollect/healthz
 ```
+
+Другой префикс: задайте `HTTP_PREFIX=/другой` у сервиса и поменяйте `location` в сниппете. Несколько префиксов: `HTTP_PREFIX=/recollect,/collect`. Только корень, без префикса: `HTTP_PREFIX=-`.
+
+## Отдельный vhost (необязательно)
+
+Полный сайт: [`nginx/recollect.conf`](../nginx/recollect.conf) — в `conf.d` или `sites-enabled`. В нём замените `server_name`. `default_server` не используется.
 
 ## HTTPS
 
-В том же файле есть закомментированный `server` на 443. Раскомментируйте его, укажите сертификаты и в блоке `:80` добавьте `return 301 https://$host$request_uri;`.
+TLS остаётся на существующем хосте. Отдельный сертификат для `/recollect/` не нужен.
 
-Let's Encrypt:
-
-```bash
-certbot --nginx -d recollect.example.com
-```
-
-После certbot проверьте, что `proxy_read_timeout 120s` на месте.
-
-Токен лучше передавать заголовком `X-Saymon-Token`: формат `recollect_access` не пишет query string в лог.
+Токен лучше передавать заголовком `X-Saymon-Token` или Bearer, не в query.
 
 Примеры запросов — в [usage.md](usage.md).

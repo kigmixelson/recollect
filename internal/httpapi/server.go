@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/kigmixelson/recollect/internal/collect"
@@ -16,17 +17,37 @@ type Server struct {
 	log     *slog.Logger
 }
 
-func New(service *collect.Service, log *slog.Logger) http.Handler {
+func New(service *collect.Service, log *slog.Logger, prefixes ...string) http.Handler {
 	if log == nil {
 		log = slog.Default()
+	}
+	if len(prefixes) == 0 {
+		prefixes = []string{"", "/recollect"}
 	}
 	s := &Server{service: service, log: log}
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /healthz", s.health)
-	mux.HandleFunc("GET /api/collect", s.collect)
-	mux.HandleFunc("POST /api/collect", s.collect)
+	seen := map[string]struct{}{}
+	for _, prefix := range prefixes {
+		p := normalizePrefix(prefix)
+		if _, ok := seen[p]; ok {
+			continue
+		}
+		seen[p] = struct{}{}
+		mux.HandleFunc("GET "+p+"/healthz", s.health)
+		mux.HandleFunc("GET "+p+"/api/collect", s.collect)
+		mux.HandleFunc("POST "+p+"/api/collect", s.collect)
+	}
 	return withRecover(log, mux)
+}
+
+func normalizePrefix(p string) string {
+	p = strings.TrimSpace(p)
+	p = strings.Trim(p, "/")
+	if p == "" {
+		return ""
+	}
+	return "/" + p
 }
 
 func (s *Server) health(w http.ResponseWriter, _ *http.Request) {

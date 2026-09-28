@@ -21,7 +21,7 @@ func main() {
 
 	client := saymon.NewClient(cfg.HTTPTimeout, cfg.TLSInsecure)
 	svc := collect.New(client, cfg.Concurrency)
-	handler := httpapi.New(svc, log)
+	handler := httpapi.New(svc, log, cfg.HTTPPrefixes()...)
 
 	srv := &http.Server{
 		Addr:              cfg.ListenAddr,
@@ -37,6 +37,7 @@ func main() {
 		"timeout", cfg.HTTPTimeout.String(),
 		"concurrency", cfg.Concurrency,
 		"tls_insecure", cfg.TLSInsecure,
+		"prefixes", cfg.HTTPPrefixes(),
 	)
 	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Error("server stopped", "err", err)

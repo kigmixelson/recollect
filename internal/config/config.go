@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -11,6 +12,7 @@ type Config struct {
 	HTTPTimeout time.Duration
 	Concurrency int
 	TLSInsecure bool
+	HTTPPrefix  string
 }
 
 func FromEnv() Config {
@@ -19,7 +21,49 @@ func FromEnv() Config {
 		HTTPTimeout: envDuration("HTTP_TIMEOUT", 30*time.Second),
 		Concurrency: envInt("SAYMON_CONCURRENCY", 8),
 		TLSInsecure: envBool("SAYMON_TLS_INSECURE", false),
+		HTTPPrefix:  env("HTTP_PREFIX", "/recollect"),
 	}
+}
+
+// HTTPPrefixes is the list of URL prefixes the HTTP API is mounted on.
+// The empty prefix (root) is always included so healthcheck and stripped nginx paths keep working.
+func (c Config) HTTPPrefixes() []string {
+	return ParseHTTPPrefixes(c.HTTPPrefix)
+}
+
+func ParseHTTPPrefixes(raw string) []string {
+	raw = strings.TrimSpace(raw)
+	extras := []string{"/recollect"}
+	switch {
+	case raw == "-" || strings.EqualFold(raw, "none"):
+		extras = nil
+	case raw != "":
+		extras = nil
+		for _, part := range strings.Split(raw, ",") {
+			if p := normalizePrefix(part); p != "" {
+				extras = append(extras, p)
+			}
+		}
+	}
+	out := []string{""}
+	seen := map[string]struct{}{"": {}}
+	for _, p := range extras {
+		if _, ok := seen[p]; ok {
+			continue
+		}
+		seen[p] = struct{}{}
+		out = append(out, p)
+	}
+	return out
+}
+
+func normalizePrefix(p string) string {
+	p = strings.TrimSpace(p)
+	p = strings.Trim(p, "/")
+	if p == "" {
+		return ""
+	}
+	return "/" + p
 }
 
 func env(key, fallback string) string {

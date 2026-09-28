@@ -72,6 +72,7 @@ docker save "${IMAGE}" | gzip > "${STAGE}/image.tar.gz"
 cp "${ROOT}/docker-compose.yml" "${STAGE}/docker-compose.yml"
 cp "${ROOT}/scripts/deploy.sh" "${STAGE}/deploy.sh"
 cp "${ROOT}/nginx/recollect.conf" "${STAGE}/recollect.conf"
+cp "${ROOT}/nginx/recollect.location.conf" "${STAGE}/recollect.location.conf"
 chmod +x "${STAGE}/deploy.sh"
 
 cat > "${STAGE}/.env" <<EOF
@@ -80,6 +81,7 @@ LISTEN_ADDR=:8080
 HTTP_TIMEOUT=30s
 SAYMON_CONCURRENCY=8
 SAYMON_TLS_INSECURE=false
+HTTP_PREFIX=/recollect
 EOF
 
 cat > "${STAGE}/VERSION" <<EOF

@@ -6,9 +6,11 @@
 
 | Метод | Путь | Назначение |
 | --- | --- | --- |
-| `GET` | `/healthz` | Проверка, что процесс жив |
-| `GET` | `/api/collect` | Расчёт, параметры в query |
-| `POST` | `/api/collect` | Расчёт, параметры в JSON-теле — удобно для HTTP-проверки SAYMON |
+| `GET` | `/healthz`, `/recollect/healthz` | Проверка, что процесс жив |
+| `GET` | `/api/collect`, `/recollect/api/collect` | Расчёт, параметры в query |
+| `POST` | `/api/collect`, `/recollect/api/collect` | Расчёт, JSON в теле — для HTTP-проверки SAYMON |
+
+Префикс `/recollect` включён по умолчанию (`HTTP_PREFIX=/recollect`), чтобы встроить сервис в уже существующий nginx-хост: `https://<хост>/recollect/api/collect`.
 
 ## Как считается ответ
 
@@ -52,7 +54,7 @@
 | Поле в форме | Значение |
 | --- | --- |
 | Request type | `POST` |
-| URL | `http://<recollect-host>/api/collect` |
+| URL | `https://<хост>/recollect/api/collect` |
 | HTTP headers | `Content-Type` = `application/json` |
 | Request body | JSON ниже |
 | HTTP Auth | `Bearer`, токен в поле username |
