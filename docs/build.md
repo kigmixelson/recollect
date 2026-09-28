@@ -1,80 +1,54 @@
 # Сборка
 
-Сборка выполняется на **сборочной машине**. На ней нужен исходный код и Docker (или Go 1.23+).  
-На машину установки исходники и компилятор **не** нужны: туда передаётся только артефакт.
+Сборка выполняется на **сборочной машине**. На целевую машину исходники не копируются — только архив из `scripts/build-arm.sh`.
 
-Артефакты:
-
-- Docker-образ `recollect:<tag>` — основной способ
-- бинарник `recollect` — если сервис запускается без Docker
+Архив содержит linux/arm64 Docker-образ, `docker-compose.yml`, `.env` и `deploy.sh`.
 
 ## Требования на сборочной машине
 
-- Docker (для образа)
-- или Go 1.23+ (для бинарника)
-- сеть для скачивания базовых образов `golang` и `alpine` при первой сборке
+- Docker (BuildKit)
+- `curl`/`git` по желанию
+- Go 1.23+ опционально: если `go` нет в PATH, тесты идут в контейнере `golang:1.23-alpine`
 
-## Сборка образа
+Скрипт собирает **linux/arm64**. Запускайте его на ARM-хосте или на Docker с эмуляцией `linux/arm64`.
+
+## Сборка скриптом
 
 Из корня репозитория:
 
 ```bash
-docker build -t recollect:1.0.0 .
-docker tag recollect:1.0.0 recollect:local
+./scripts/build-arm.sh
 ```
 
-Проверка образа:
+Результат: `dist/recollect-<версия>-linux-arm64.tar.gz`
+
+Версию можно задать явно:
 
 ```bash
-docker run --rm -p 8080:8080 recollect:1.0.0
-curl -s http://127.0.0.1:8080/healthz
+VERSION=1.0.0 ./scripts/build-arm.sh
 ```
 
-Ожидается `{"status":"ok"}`.
+## Что внутри архива
 
-## Выгрузка образа для установки
+- `image.tar.gz` — `docker save` образа `recollect:<версия>`
+- `docker-compose.yml`
+- `.env` с `RECOLLECT_IMAGE=recollect:<версия>`
+- `deploy.sh`
+- `VERSION`
 
-Образ сохраняется в файл и копируется на целевой хост.
+Этот файл копируется на целевую машину. Дальше — [установка](install.md).
+
+## Ручная сборка
 
 ```bash
+docker build --platform linux/arm64 -t recollect:1.0.0 .
 docker save recollect:1.0.0 | gzip > recollect-1.0.0.tar.gz
 ```
 
-Вместе с образом на установку передайте `docker-compose.yml` из корня репозитория.
-
-## Сборка бинарника
-
-Linux, статическая линковка (подходит для systemd без Docker):
-
-```bash
-GOOS=linux GOARCH=amd64 CGO_ENABLED=0 \
-  go build -trimpath -ldflags="-s -w" \
-  -o dist/recollect ./cmd/recollect
-```
-
-Для ARM64:
+Бинарник без Docker:
 
 ```bash
 GOOS=linux GOARCH=arm64 CGO_ENABLED=0 \
   go build -trimpath -ldflags="-s -w" \
   -o dist/recollect ./cmd/recollect
 ```
-
-Проверка на той же архитектуре:
-
-```bash
-go test ./...
-```
-
-Файл `dist/recollect` копируется на машину установки.
-
-## Что передавать на установку
-
-| Артефакт | Куда | Зачем |
-| --- | --- | --- |
-| `recollect-1.0.0.tar.gz` | сервер приложения | загрузка образа |
-| `docker-compose.yml` | сервер приложения | запуск контейнера |
-| `dist/recollect` | сервер приложения | запуск без Docker |
-| `docs/install.md` | опционально | инструкция на месте |
-
-Дальше — [установка](install.md).

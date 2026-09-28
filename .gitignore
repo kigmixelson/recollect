@@ -1,5 +1,6 @@
 /bin/
 /recollect
+/dist/
 *.exe
 *.test
 .DS_Store

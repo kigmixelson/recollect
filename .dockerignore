@@ -1,3 +1,6 @@
+docs
+scripts
+dist
 .git
 .gitignore
 .idea
@@ -9,3 +12,4 @@ bin
 .dockerignore
 Dockerfile
 docker-compose.yml
+.env.example

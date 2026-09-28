@@ -1,49 +1,47 @@
 # Установка
 
 Установка выполняется на **целевой машине**, отдельно от сборки.  
-Исходный код и Go здесь не нужны. Нужен артефакт со [сборочной машины](build.md).
+Нужен архив со [сборочной машины](build.md) (`dist/recollect-*-linux-arm64.tar.gz`).
 
-Два варианта:
+Основной путь — скрипт `deploy.sh` (он же лежит внутри архива).
 
-1. Docker Compose — основной
-2. systemd и бинарник — если контейнеры не используются
+## Требования на целевой машине
 
-## Docker Compose
+- Docker
+- Docker Compose plugin (`docker compose`) или `docker-compose`
+- `curl` или `wget` для проверки `/healthz`
 
-Нужны Docker и Docker Compose plugin (или `docker-compose`).
+Исходный код и Go не нужны.
 
-### 1. Загрузить образ
+## Запуск из архива
 
-```bash
-gunzip -c recollect-1.0.0.tar.gz | docker load
-docker image ls recollect
-```
-
-Если тег в файле `docker-compose.yml` другой, задайте его явно:
+Скопируйте архив на сервер и выполните скрипт из репозитория:
 
 ```bash
-docker tag recollect:1.0.0 recollect:local
+./scripts/deploy.sh ./recollect-1.0.0-linux-arm64.tar.gz
 ```
 
-или:
+Или без репозитория — только архив:
 
 ```bash
-export RECOLLECT_IMAGE=recollect:1.0.0
+tar -xzf recollect-1.0.0-linux-arm64.tar.gz
+cd recollect-1.0.0-linux-arm64
+./deploy.sh
 ```
 
-### 2. Положить compose-файл
-
-Скопируйте `docker-compose.yml` в каталог запуска, например `/opt/recollect`.
+По умолчанию всё ставится в `/opt/recollect`. Каталог можно сменить:
 
 ```bash
-mkdir -p /opt/recollect
-cp docker-compose.yml /opt/recollect/
-cd /opt/recollect
+INSTALL_DIR=/srv/recollect ./scripts/deploy.sh ./recollect-1.0.0-linux-arm64.tar.gz
 ```
 
-### 3. Настроить окружение
+Скрипт загружает образ, копирует compose-конфиг, поднимает контейнер и проверяет `http://127.0.0.1:8080/healthz`.
 
-Создайте `/opt/recollect/.env` при необходимости:
+Если `.env` уже есть, он не затирается: обновляется только `RECOLLECT_IMAGE`.
+
+## Настройка после установки
+
+Файл `/opt/recollect/.env`:
 
 ```dotenv
 RECOLLECT_IMAGE=recollect:1.0.0
@@ -53,45 +51,47 @@ SAYMON_CONCURRENCY=8
 SAYMON_TLS_INSECURE=false
 ```
 
-Если у SAYMON самоподписанный сертификат:
+Самоподписанный сертификат SAYMON:
 
 ```dotenv
 SAYMON_TLS_INSECURE=true
 ```
 
-Если сервис будет за nginx на той же машине, публиковать порт наружу не нужно. В `docker-compose.yml` замените проброс порта на localhost:
+Если сервис будет за [nginx](nginx.md) на той же машине, ограничьте порт localhost в `/opt/recollect/docker-compose.yml`:
 
 ```yaml
 ports:
   - "127.0.0.1:8080:8080"
 ```
 
-### 4. Запустить
+Затем:
 
 ```bash
 cd /opt/recollect
 docker compose up -d
-docker compose ps
-curl -s http://127.0.0.1:8080/healthz
 ```
+
+## Обновление
+
+Повторите `deploy.sh` с новым архивом. Существующий `.env` сохранится, подтянется новый тег образа.
 
 Логи:
 
 ```bash
+cd /opt/recollect
 docker compose logs -f recollect
 ```
-
-Обновление с новой сборки: загрузить новый tar, `docker compose up -d`.
 
 Остановка:
 
 ```bash
+cd /opt/recollect
 docker compose down
 ```
 
-## systemd (бинарник)
+## systemd (бинарник, без Docker)
 
-Нужен файл `recollect`, собранный под архитектуру сервера.
+Если собрали бинарник, а не образ:
 
 ```bash
 install -m 0755 recollect /usr/local/bin/recollect
@@ -125,11 +125,8 @@ WantedBy=multi-user.target
 ```bash
 systemctl daemon-reload
 systemctl enable --now recollect
-systemctl status recollect
 curl -s http://127.0.0.1:8080/healthz
 ```
-
-Для доступа снаружи либо откройте порт в файрволе, либо поставьте [nginx](nginx.md).
 
 ## Переменные окружения
 
