@@ -73,6 +73,9 @@ cd /opt/recollect
 docker compose up -d
 ```
 
+Конфиг nginx после установки: `/opt/recollect/recollect.conf`. Его можно скопировать в `/etc/nginx/conf.d/` или `sites-enabled` — см. [nginx.md](nginx.md).
+
+
 ## Обновление
 
 Повторите `deploy.sh` с новым архивом. Существующий `.env` сохранится, подтянется новый тег образа.

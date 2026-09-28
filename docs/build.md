@@ -44,6 +44,7 @@ VERSION=1.0.0 ./scripts/build-amd.sh
 - `docker-compose.yml`
 - `.env` с `RECOLLECT_IMAGE=recollect:<версия>-<arch>`
 - `deploy.sh`
+- `recollect.conf` — drop-in для nginx
 - `VERSION`
 
 Этот файл копируется на целевую машину. Дальше — [установка](install.md).

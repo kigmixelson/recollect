@@ -88,6 +88,9 @@ echo "==> загрузка образа"
 gzip -dc "${SRC}/image.tar.gz" | docker load
 
 cp "${SRC}/docker-compose.yml" "${INSTALL_DIR}/docker-compose.yml"
+if [[ -f "${SRC}/recollect.conf" ]]; then
+  cp "${SRC}/recollect.conf" "${INSTALL_DIR}/recollect.conf"
+fi
 if [[ -f "${SRC}/VERSION" ]]; then
   cp "${SRC}/VERSION" "${INSTALL_DIR}/VERSION"
 fi

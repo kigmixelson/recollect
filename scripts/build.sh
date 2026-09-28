@@ -71,6 +71,7 @@ mkdir -p "${STAGE}"
 docker save "${IMAGE}" | gzip > "${STAGE}/image.tar.gz"
 cp "${ROOT}/docker-compose.yml" "${STAGE}/docker-compose.yml"
 cp "${ROOT}/scripts/deploy.sh" "${STAGE}/deploy.sh"
+cp "${ROOT}/nginx/recollect.conf" "${STAGE}/recollect.conf"
 chmod +x "${STAGE}/deploy.sh"
 
 cat > "${STAGE}/.env" <<EOF
