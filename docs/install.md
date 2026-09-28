@@ -1,7 +1,7 @@
 # Установка
 
 Установка выполняется на **целевой машине**, отдельно от сборки.  
-Нужен архив со [сборочной машины](build.md) (`dist/recollect-*-linux-arm64.tar.gz`).
+Нужен архив со [сборочной машины](build.md): `dist/recollect-*-linux-arm64.tar.gz` или `dist/recollect-*-linux-amd64.tar.gz` — под архитектуру целевого сервера.
 
 Основной путь — скрипт `deploy.sh` (он же лежит внутри архива).
 
@@ -18,21 +18,23 @@
 Скопируйте архив на сервер и выполните скрипт из репозитория:
 
 ```bash
-./scripts/deploy.sh ./recollect-1.0.0-linux-arm64.tar.gz
+./scripts/deploy.sh ./recollect-1.0.0-linux-amd64.tar.gz
 ```
+
+Для ARM64 подставьте `linux-arm64` в имени архива.
 
 Или без репозитория — только архив:
 
 ```bash
-tar -xzf recollect-1.0.0-linux-arm64.tar.gz
-cd recollect-1.0.0-linux-arm64
+tar -xzf recollect-1.0.0-linux-amd64.tar.gz
+cd recollect-1.0.0-linux-amd64
 ./deploy.sh
 ```
 
 По умолчанию всё ставится в `/opt/recollect`. Каталог можно сменить:
 
 ```bash
-INSTALL_DIR=/srv/recollect ./scripts/deploy.sh ./recollect-1.0.0-linux-arm64.tar.gz
+INSTALL_DIR=/srv/recollect ./scripts/deploy.sh ./recollect-1.0.0-linux-amd64.tar.gz
 ```
 
 Скрипт загружает образ, копирует compose-конфиг, поднимает контейнер и проверяет `http://127.0.0.1:8080/healthz`.

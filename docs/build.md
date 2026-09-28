@@ -1,8 +1,8 @@
 # Сборка
 
-Сборка выполняется на **сборочной машине**. На целевую машину исходники не копируются — только архив из `scripts/build-arm.sh`.
+Сборка выполняется на **сборочной машине**. На целевую машину исходники не копируются — только архив.
 
-Архив содержит linux/arm64 Docker-образ, `docker-compose.yml`, `.env` и `deploy.sh`.
+Архив содержит Docker-образ нужной архитектуры, `docker-compose.yml`, `.env` и `deploy.sh`.
 
 ## Требования на сборочной машине
 
@@ -10,11 +10,11 @@
 - `curl`/`git` по желанию
 - Go 1.23+ опционально: если `go` нет в PATH, тесты идут в контейнере `golang:1.23-alpine`
 
-Скрипт собирает **linux/arm64**. Компилятор работает на архитектуре сборочной машины (amd64 или arm), qemu не требуется.
+Компилятор работает на архитектуре сборочной машины, qemu не требуется.
 
 ## Сборка скриптом
 
-Из корня репозитория:
+ARM64:
 
 ```bash
 ./scripts/build-arm.sh
@@ -22,17 +22,27 @@
 
 Результат: `dist/recollect-<версия>-linux-arm64.tar.gz`
 
+AMD64 (x86_64):
+
+```bash
+./scripts/build-amd.sh
+```
+
+Результат: `dist/recollect-<версия>-linux-amd64.tar.gz`
+
 Версию можно задать явно:
 
 ```bash
-VERSION=1.0.0 ./scripts/build-arm.sh
+VERSION=1.0.0 ./scripts/build-amd.sh
 ```
+
+Архитектуру целевой машины и архива нужно брать одну и ту же.
 
 ## Что внутри архива
 
-- `image.tar.gz` — `docker save` образа `recollect:<версия>`
+- `image.tar.gz` — `docker save` образа `recollect:<версия>-<arch>`
 - `docker-compose.yml`
-- `.env` с `RECOLLECT_IMAGE=recollect:<версия>`
+- `.env` с `RECOLLECT_IMAGE=recollect:<версия>-<arch>`
 - `deploy.sh`
 - `VERSION`
 
@@ -41,14 +51,14 @@ VERSION=1.0.0 ./scripts/build-arm.sh
 ## Ручная сборка
 
 ```bash
-docker build --platform linux/arm64 -t recollect:1.0.0 .
-docker save recollect:1.0.0 | gzip > recollect-1.0.0.tar.gz
+docker build --platform linux/amd64 --build-arg TARGETARCH=amd64 -t recollect:1.0.0-amd64 .
+docker save recollect:1.0.0-amd64 | gzip > recollect-1.0.0-linux-amd64.tar.gz
 ```
 
 Бинарник без Docker:
 
 ```bash
-GOOS=linux GOARCH=arm64 CGO_ENABLED=0 \
+GOOS=linux GOARCH=amd64 CGO_ENABLED=0 \
   go build -trimpath -ldflags="-s -w" \
   -o dist/recollect ./cmd/recollect
 ```

@@ -6,7 +6,7 @@
 
 ## Документация
 
-- [Сборка](docs/build.md) — `./scripts/build-arm.sh` на сборочной машине
+- [Сборка](docs/build.md) — `./scripts/build-arm.sh` или `./scripts/build-amd.sh`
 - [Установка](docs/install.md) — `./scripts/deploy.sh архив.tar.gz` на целевой машине
 - [Использование](docs/usage.md) — API и примеры запросов
 - [Nginx](docs/nginx.md) — HTTPS и reverse proxy
