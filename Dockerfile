@@ -7,10 +7,9 @@ ARG TARGETOS=linux
 ARG TARGETARCH=arm64
 RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -trimpath -ldflags="-s -w" -o /out/recollect ./cmd/recollect
 
-FROM alpine:3.21
-RUN apk add --no-cache ca-certificates tzdata wget \
-    && adduser -D -H -u 65532 app
+FROM scratch
+COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 COPY --from=build /out/recollect /usr/local/bin/recollect
-USER app
+USER 65532:65532
 EXPOSE 8080
-ENTRYPOINT ["recollect"]
+ENTRYPOINT ["/usr/local/bin/recollect"]

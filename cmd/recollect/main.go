@@ -14,6 +14,9 @@ import (
 
 func main() {
 	cfg := config.FromEnv()
+	if len(os.Args) > 1 && os.Args[1] == "healthcheck" {
+		os.Exit(runHealthcheck(cfg.ListenAddr))
+	}
 	log := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
 	client := saymon.NewClient(cfg.HTTPTimeout, cfg.TLSInsecure)
