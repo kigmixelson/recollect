@@ -14,12 +14,13 @@
 
 ## Как считается ответ
 
-1. Сервис запрашивает `GET /node/api/objects/{id}/children` на указанном SAYMON-хосте.
-2. Метрики из запроса накладываются на `metrics_cache` каждого дочернего объекта.
-3. Для совпавших метрик запрашивается история `GET /node/api/objects/{childId}/history` на глубину от текущего момента.
-4. Возвращаются агрегаты по каждой совпавшей метрике.
+1. Берётся список детей `GET /node/api/objects/{id}/children`.
+2. Запрошенные метрики накладываются на `metrics_cache` каждого ребёнка.
+3. Для совпавших метрик запрашивается история на указанную глубину.
+4. У каждого ребёнка берётся **последняя точка** в этом окне.
+5. По этим свежим значениям считается агрегат (среднее, min, max, …) **сразу по всем детям**.
 
-Дети без совпадений попадают в `skipped`.
+Если в окне нет ни одной точки, метрика возвращается пустой: `"message.I": {}`.
 
 ## Параметры `/api/collect`
 
@@ -88,7 +89,7 @@
 | `sum` | сумма | `total`, `сумма` |
 | `dev` | стандартное отклонение | `stddev`, `девиация`, `дивиация` |
 
-На SAYMON уходит `downsample=all-avg|all-min|all-max|all-sum|all-dev`. Если точек несколько, агрегат дополнительно считается в сервисе.
+История запрашивается без downsample: из окна берётся последняя точка каждого ребёнка, агрегат считается уже по этим значениям.
 
 ## Глубина
 
@@ -146,35 +147,37 @@ curl -G 'https://recollect.example.com/api/collect' \
 
 ## Ответ
 
-`200` — расчёт выполнен (часть детей может быть в `skipped` или с `error` у конкретного ребёнка).
+`200` — расчёт выполнен. `values` — итог по всем детям, `samples` — свежие точки, из которых он собран.
+
+Пример для трёх ИКЗ и `message.I` = 52.625, 42.25, 37:
 
 ```json
 {
-  "host": "saymon.example.com",
+  "host": "https://pult.dc-en.kg",
   "object_id": "6a61ae4562e391eba8d3edbb",
   "depth": "12h",
-  "from": 1758960000000,
-  "to": 1759003200000,
-  "metrics": ["message.I", "message.Temp"],
-  "aggregates": ["avg", "min", "max", "sum", "dev"],
-  "results": [
-    {
-      "id": "6a61aea562e391eba8d3edc3",
-      "name": "ИКЗ 2603017001",
-      "matched_metrics": ["message.I", "message.Temp"],
-      "values": {
-        "message.I": {"avg": 1.2, "min": 0.4, "max": 3.1, "sum": 48.0, "dev": 0.7},
-        "message.Temp": {"avg": 22.0, "min": 18.1, "max": 27.4, "sum": 880.0, "dev": 2.1}
-      }
-    }
-  ],
-  "skipped": [
-    {
-      "id": "6a61aed362e391eba8d3edd7",
-      "name": "ИКЗ 2603017002",
-      "reason": "no matching metrics in metrics_cache"
-    }
+  "from": 1790573586417,
+  "to": 1790616786417,
+  "metrics": ["message.I"],
+  "aggregates": ["avg"],
+  "values": {
+    "message.I": {"avg": 43.958333333333336}
+  },
+  "samples": [
+    {"id": "6a61aea562e391eba8d3edc3", "name": "ИКЗ 2603017001", "metric": "message.I", "value": 52.625, "timestamp": 1790616700000},
+    {"id": "6a61aed362e391eba8d3edd7", "name": "ИКЗ 2603017002", "metric": "message.I", "value": 42.25, "timestamp": 1790616700000},
+    {"id": "6a61af1362e391eba8d3edea", "name": "ИКЗ 2603017003", "metric": "message.I", "value": 37, "timestamp": 1790616700000}
   ]
+}
+```
+
+Нет точек в окне:
+
+```json
+{
+  "values": {
+    "message.I": {}
+  }
 }
 ```
 

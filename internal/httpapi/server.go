@@ -75,7 +75,7 @@ func (s *Server) collect(w http.ResponseWriter, r *http.Request) {
 
 	s.log.Info("collect ok",
 		"object_id", params.ObjectID,
-		"children", len(result.Results),
+		"samples", len(result.Samples),
 		"skipped", len(result.Skipped),
 		"took", time.Since(started).String(),
 	)

@@ -23,6 +23,13 @@ func TestReduce(t *testing.T) {
 	assertFloat(t, Reduce(points, "sum"), 18)
 	assertFloat(t, Reduce(points, "dev"), math.Sqrt(32.0/3.0))
 	assertFloat(t, Reduce(DataPoints{{Value: 4.2}}, "dev"), 4.2)
+	got := Latest(DataPoints{{Timestamp: 1, Value: 10}, {Timestamp: 9, Value: 52.625}, {Timestamp: 3, Value: 7}})
+	if got == nil || got.Timestamp != 9 || got.Value != 52.625 {
+		t.Fatalf("Latest: %+v", got)
+	}
+	if Latest(nil) != nil {
+		t.Fatal("expected nil Latest for empty series")
+	}
 	if Reduce(nil, "avg") != nil {
 		t.Fatal("expected nil for empty series")
 	}

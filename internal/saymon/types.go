@@ -96,11 +96,23 @@ func (d *DataPoints) UnmarshalJSON(b []byte) error {
 	}
 }
 
+func Latest(points DataPoints) *DataPoint {
+	if len(points) == 0 {
+		return nil
+	}
+	best := points[0]
+	for _, p := range points[1:] {
+		if p.Timestamp > best.Timestamp {
+			best = p
+		}
+	}
+	return &best
+}
+
 func Reduce(points DataPoints, agg string) *float64 {
 	if len(points) == 0 {
 		return nil
 	}
-	// A single point from SAYMON all-* downsample is already the aggregate.
 	if len(points) == 1 {
 		v := points[0].Value
 		return &v

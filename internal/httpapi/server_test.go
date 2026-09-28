@@ -33,7 +33,7 @@ func TestCollectHTTP(t *testing.T) {
 			MetricsCache: []string{"message.I"},
 		}},
 		history: map[string][]saymon.MetricHistory{
-			"c1|all-max": {{Metric: "message.I", Dps: saymon.DataPoints{{Value: 9}}}},
+			"c1": {{Metric: "message.I", Dps: saymon.DataPoints{{Timestamp: 1, Value: 9}}}},
 		},
 	}
 	handler := New(collect.New(cli, 1), nil)
@@ -49,11 +49,8 @@ func TestCollectHTTP(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
 		t.Fatal(err)
 	}
-	if len(payload.Results) != 1 || payload.Results[0].Values["message.I"]["max"] == nil {
+	if payload.Values["message.I"]["max"] == nil || *payload.Values["message.I"]["max"] != 9 {
 		t.Fatalf("payload: %+v", payload)
-	}
-	if *payload.Results[0].Values["message.I"]["max"] != 9 {
-		t.Fatalf("value: %+v", payload.Results[0].Values)
 	}
 }
 
@@ -66,7 +63,7 @@ func TestCollectHTTPPostJSON(t *testing.T) {
 			MetricsCache: []string{"message.I"},
 		}},
 		history: map[string][]saymon.MetricHistory{
-			"c1|all-avg": {{Metric: "message.I", Dps: saymon.DataPoints{{Value: 3}}}},
+			"c1": {{Metric: "message.I", Dps: saymon.DataPoints{{Timestamp: 1, Value: 3}}}},
 		},
 	}
 	handler := New(collect.New(cli, 1), nil)
@@ -79,6 +76,13 @@ func TestCollectHTTPPostJSON(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status %d body %s", rec.Code, rec.Body.String())
 	}
+	var payload collect.Result
+	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
+		t.Fatal(err)
+	}
+	if payload.Values["message.I"]["avg"] == nil || *payload.Values["message.I"]["avg"] != 3 {
+		t.Fatalf("payload: %+v", payload)
+	}
 }
 
 func TestCollectHTTPPrefixed(t *testing.T) {
@@ -90,7 +94,7 @@ func TestCollectHTTPPrefixed(t *testing.T) {
 			MetricsCache: []string{"message.I"},
 		}},
 		history: map[string][]saymon.MetricHistory{
-			"c1|all-avg": {{Metric: "message.I", Dps: saymon.DataPoints{{Value: 3}}}},
+			"c1": {{Metric: "message.I", Dps: saymon.DataPoints{{Timestamp: 1, Value: 3}}}},
 		},
 	}
 	handler := New(collect.New(cli, 1), nil)
@@ -131,6 +135,6 @@ func (f *fakeClient) Children(context.Context, string, string, string) ([]saymon
 	return f.children, nil
 }
 
-func (f *fakeClient) History(_ context.Context, _, _, objectID string, _ []string, _, _ time.Time, downsample string) ([]saymon.MetricHistory, error) {
-	return f.history[objectID+"|"+downsample], nil
+func (f *fakeClient) History(_ context.Context, _, _, objectID string, _ []string, _, _ time.Time, _ string) ([]saymon.MetricHistory, error) {
+	return f.history[objectID], nil
 }
