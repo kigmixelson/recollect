@@ -42,15 +42,26 @@ else
     go test ./...
 fi
 
-echo "==> сборка образа ${IMAGE}"
+echo "==> сборка образа ${IMAGE} (кросс-компиляция в ${PLATFORM})"
 export DOCKER_BUILDKIT=1
-docker build \
-  --platform "${PLATFORM}" \
-  --build-arg TARGETOS=linux \
-  --build-arg TARGETARCH="${ARCH}" \
-  -t "${IMAGE}" \
-  -t recollect:local \
-  .
+if docker buildx version >/dev/null 2>&1; then
+  docker buildx build \
+    --platform "${PLATFORM}" \
+    --build-arg TARGETOS=linux \
+    --build-arg TARGETARCH="${ARCH}" \
+    --load \
+    -t "${IMAGE}" \
+    -t recollect:local \
+    .
+else
+  docker build \
+    --platform "${PLATFORM}" \
+    --build-arg TARGETOS=linux \
+    --build-arg TARGETARCH="${ARCH}" \
+    -t "${IMAGE}" \
+    -t recollect:local \
+    .
+fi
 
 echo "==> упаковка ${BUNDLE}"
 rm -rf "${STAGE}"

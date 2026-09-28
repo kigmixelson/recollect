@@ -1,4 +1,6 @@
-FROM golang:1.23-alpine AS build
+# Компилятор запускается на архитектуре сборочной машины.
+# Бинарник и итоговый образ — linux/arm64 (TARGETARCH), qemu не нужен.
+FROM --platform=$BUILDPLATFORM golang:1.23-alpine AS build
 
 WORKDIR /src
 COPY go.mod ./
